@@ -2,7 +2,6 @@ import UIKit
 
 final class MovieQuizViewController: UIViewController {
     
-// MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -14,59 +13,63 @@ final class MovieQuizViewController: UIViewController {
         
         alertPresenter = AlertPresenterImplementation(viewController: self)
         statisticService = StatisticServiceImplementation()
-
+        
         
     }
-        
+    
     
     //MARK: АУТЛЕТЫ
+    
     @IBOutlet private var imageView: UIImageView!
     @IBOutlet private var textLabel: UILabel!
     @IBOutlet weak var counterLabel: UILabel!
     
+    
     //MARK: КНОПКИ
+    
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
         let givenAnswer = true
         sender.isEnabled = false
-            
-            showAnswerResult(isCorrect: givenAnswer == currentQuestion?.correctAnswer)
+        
+        showAnswerResult(isCorrect: givenAnswer == currentQuestion?.correctAnswer)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             sender.isEnabled = true
         }
-        }
+    }
     
     @IBAction private func noButtonClicked(_ sender: UIButton) {
         let givenAnswer = false
         sender.isEnabled = false
         
-            showAnswerResult(isCorrect: givenAnswer == currentQuestion?.correctAnswer)
+        showAnswerResult(isCorrect: givenAnswer == currentQuestion?.correctAnswer)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             sender.isEnabled = true
         }
     }
     
+    
     //MARK: ПЕРЕМЕННЫЕ И КОНСТАНТЫ
     
-    private var currentQuestionIndex: Int = 0 //ok
-    private var correctAnswers: Int = 0 //ok
+    //про вопросы
+    private var currentQuestionIndex: Int = 0
+    private var correctAnswers: Int = 0
+    private let questionsCount: Int = 10
+    private var questionFactory: QuestionFactoryProtocol?
+    private var currentQuestion: QuizQuestion?
     
-    private let questionsCount: Int = 10 //ok
-    private var questionFactory: QuestionFactoryProtocol? //ok
-    
-    private var currentQuestion: QuizQuestion? //ok
-    
-    private var alertPresenter: AlertPresenterProtocol? //ok
+    //про алерт и статистику
+    private var alertPresenter: AlertPresenterProtocol?
     private var statisticService: StatisticService?
+    
     
     //MARK: МЕТОДЫ
     
-    // приватный метод конвертации, который принимает моковый вопрос и возвращает вью модель для главного экрана
     private func convert(model: QuizQuestion) -> QuizStepViewModel {
         QuizStepViewModel(
             image: UIImage(named: model.image) ?? UIImage(),
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsCount)")
-    } //ок
+    }
     
     private func showAnswerResult(isCorrect: Bool) {
         if isCorrect {
@@ -83,12 +86,12 @@ final class MovieQuizViewController: UIViewController {
         }
         
     }
-
+    
     private func show(quiz step: QuizStepViewModel) {
-      imageView.image = step.image
-      textLabel.text = step.question
-      counterLabel.text = step.questionNumber
-    } //ок
+        imageView.image = step.image
+        textLabel.text = step.question
+        counterLabel.text = step.questionNumber
+    }
     
     private func showFinalResults(){
         statisticService?.store(correct: correctAnswers, count: currentQuestionIndex, total: questionsCount) //сохраняем результат
@@ -112,7 +115,7 @@ final class MovieQuizViewController: UIViewController {
         } else {
             currentQuestionIndex += 1
             questionFactory?.requestNextQuestion()        }
-    }//ok
+    }
     
     private func resultMessage() -> String {
         guard let statisticService = statisticService else {
@@ -120,7 +123,7 @@ final class MovieQuizViewController: UIViewController {
             return ""
         }
         let bestGame = statisticService.bestGame
-
+        
         let accurancy = String(format: "%.2f", statisticService.totalAccuracy) //обрубаем число до 2 знаков после запятой
         let totalPlaysStr = "Количество сыгранных игр: \(statisticService.gamesCount)"
         let currentResultStr = "Ваш результат: \(correctAnswers) из \(questionsCount)"
@@ -131,8 +134,8 @@ final class MovieQuizViewController: UIViewController {
         let resultMessage = [totalPlaysStr, currentResultStr, bestGameStr, avAccurancyStr].joined(separator: "\n") //все сложили и разделили абзацами
         
         return resultMessage
-    } //ok
-
+    }
+    
 }
 
 extension MovieQuizViewController: QuestionFactoryDelegate {

@@ -27,8 +27,8 @@ extension QuestionFactoryImpl: QuestionFactoryProtocol {
         delegate?.didReceiveNextQuestion(question: question)
     }
 }
-    //массив mock-данных
-    private let questions: [QuizQuestion] = [
+
+private let questions: [QuizQuestion] = [
             QuizQuestion(
                 image: "The Godfather",
                 text: "Рейтинг этого фильма больше чем 6?",
@@ -69,7 +69,7 @@ extension QuestionFactoryImpl: QuestionFactoryProtocol {
                 image: "Vivarium",
                 text: "Рейтинг этого фильма больше чем 6?",
                 correctAnswer: false)
-        ] //ok 
+        ]
     
     
 
