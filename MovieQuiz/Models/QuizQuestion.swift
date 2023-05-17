@@ -7,8 +7,8 @@
 
 import Foundation
 
-struct QuizQuestion { // модель-конструктор экрана
-  let image: String
-  let text: String
-  let correctAnswer: Bool
+struct QuizQuestion {
+    let image: Data
+    let text: String
+    let correctAnswer: Bool
 }
