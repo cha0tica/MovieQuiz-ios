@@ -92,6 +92,7 @@ final class MovieQuizViewController: UIViewController {
             self.correctAnswers = 0
 
             self.questionFactory?.requestNextQuestion()
+            self.questionFactory?.loadData()
         })
         
         alertPresenter?.show(alertModel: model)
@@ -168,9 +169,9 @@ final class MovieQuizViewController: UIViewController {
         let currentResultString = "Ваш результат: \(correctAnswers) из \(questionsCount)"
         let bestGameString = "Рекорд: \(bestGame.correct) из \(bestGame.total)"
         + "(\(bestGame.date.dateTimeString))"
-        let avAccurancyString = "Средняя точность: \(accurancy)%"
+        let accurancyString = "Средняя точность: \(accurancy)%"
         
-        let resultMessage = [totalPlaysString, currentResultString, bestGameString, avAccurancyString].joined(separator: "\n") //все сложили и разделили абзацами
+        let resultMessage = [totalPlaysString, currentResultString, bestGameString, accurancyString].joined(separator: "\n") //все сложили и разделили абзацами
         
         return resultMessage
     }
