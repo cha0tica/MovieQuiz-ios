@@ -10,26 +10,28 @@ import UIKit
 
 final class MovieQuizPresenter {
     
-//MARK: переменные
+    //MARK: переменные
     
     var currentQuestionIndex: Int = 0
     let questionsAmount: Int = 10
     var currentQuestion: QuizQuestion?
     weak var viewController: MovieQuizViewController?
+    var questionFactory: QuestionFactoryProtocol?
+    var correctAnswers: Int = 0
     
-//MARK: методы
+    //MARK: методы про вопросы
     
     func isLastQuestion() -> Bool {
-            currentQuestionIndex == questionsAmount - 1
-        }
-        
-        func resetQuestionIndex() {
-            currentQuestionIndex = 0
-        }
-        
-        func switchToNextQuestion() {
-            currentQuestionIndex += 1
-        }
+        currentQuestionIndex == questionsAmount - 1
+    }
+    
+    func resetQuestionIndex() {
+        currentQuestionIndex = 0
+    }
+    
+    func switchToNextQuestion() {
+        currentQuestionIndex += 1
+    }
     
     func convert(model: QuizQuestion) -> QuizStepViewModel {
         QuizStepViewModel(
@@ -37,26 +39,46 @@ final class MovieQuizPresenter {
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
     }
-
-//MARK: тут кнопки
     
-    func yesButtonClicked() {
-        guard let currentQuestion = currentQuestion else {
-                    return
-                }
-                
-                let givenAnswer = true
-                
-                viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
-    }
-    
-    func noButtonClicked() {
-            guard let currentQuestion = currentQuestion else {
+    func didRecieveNextQuestion(question: QuizQuestion?) {
+            guard let question = question else {
                 return
             }
             
-            let givenAnswer = false
-            
-            viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+            currentQuestion = question
+            let viewModel = convert(model: question)
+            DispatchQueue.main.async { [weak self] in
+                self?.viewController?.show(quiz: viewModel)
+            }
         }
+    
+    //MARK: методы про алерты
+    
+    func showNextQuestionOrResults() {
+        if isLastQuestion() {
+            self.viewController?.showFinalResults()
+        } else {
+            switchToNextQuestion()
+            questionFactory?.requestNextQuestion()        }
+    }
+    
+    //MARK: тут кнопки
+    
+    func yesButtonClicked() {
+        didAnswer(isYes: true)
+    }
+    
+    func noButtonClicked() {
+        didAnswer(isYes: false)
+    }
+    
+    private func didAnswer(isYes: Bool) {
+        guard let currentQuestion = currentQuestion else {
+            return
+        }
+        
+        let givenAnswer = isYes
+        
+        viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+    }
 }

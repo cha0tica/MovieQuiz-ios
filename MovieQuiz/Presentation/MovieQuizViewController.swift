@@ -10,13 +10,13 @@ final class MovieQuizViewController: UIViewController {
         imageView.layer.masksToBounds = true
         imageView.layer.cornerRadius = 20
         
-        questionFactory = QuestionFactoryImpl(moviesLoader: MoviesLoader(), delegate: self)
+        presenter.questionFactory = QuestionFactoryImpl(moviesLoader: MoviesLoader(), delegate: self)
         
         alertPresenter = AlertPresenterImplementation(viewController: self)
         statisticService = StatisticServiceImplementation()
         
         showLoadingIndicator()
-        questionFactory?.loadData()
+        presenter.questionFactory?.loadData()
         
         presenter.viewController = self
     }
@@ -32,25 +32,31 @@ final class MovieQuizViewController: UIViewController {
     //MARK: КНОПКИ
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
-        presenter.currentQuestion = currentQuestion
         presenter.yesButtonClicked()
+        sender.isEnabled = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            sender.isEnabled = true
+        }
     }
     
     @IBAction private func noButtonClicked(_ sender: UIButton) {
-        presenter.currentQuestion = currentQuestion
-                presenter.noButtonClicked()
+        presenter.noButtonClicked()
+        sender.isEnabled = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            sender.isEnabled = true
+        }
     }
     
     
     //MARK: ПЕРЕМЕННЫЕ И КОНСТАНТЫ
     
     //про вопросы
-    private var correctAnswers: Int = 0
+    //private var correctAnswers: Int = 0
     
     private let presenter = MovieQuizPresenter()
-
-    private var questionFactory: QuestionFactoryProtocol?
-    private var currentQuestion: QuizQuestion?
+    
+    //private var questionFactory: QuestionFactoryProtocol?
+    //private var currentQuestion: QuizQuestion?
     
     //про алерт и статистику
     private var alertPresenter: AlertPresenterProtocol?
@@ -67,9 +73,9 @@ final class MovieQuizViewController: UIViewController {
     }
     //метод для скрывания индикатора
     private func hideLoadingIndicator() {
-            activityIndicator.isHidden = true
-            activityIndicator.stopAnimating()
-        }
+        activityIndicator.isHidden = true
+        activityIndicator.stopAnimating()
+    }
     
     
     //метод для показа алерта с ошибкой
@@ -80,17 +86,17 @@ final class MovieQuizViewController: UIViewController {
             title: "Ошибка",
             message: message,
             preferredStyle: .alert)
-
+        
         let action = UIAlertAction(title: "Попробовать еще раз",
                                    style: .default) { [weak self] _ in
             guard let self = self else { return }
-
+            
             self.presenter.resetQuestionIndex()
-            self.correctAnswers = 0
-
-            self.questionFactory?.requestNextQuestion()
+            self.presenter.correctAnswers = 0
+            
+            self.presenter.questionFactory?.requestNextQuestion()
         }
-
+        
         alert.addAction(action)
     }
     
@@ -98,7 +104,7 @@ final class MovieQuizViewController: UIViewController {
     //метод для демонстрации, правильный ли был ответ
     func showAnswerResult(isCorrect: Bool) {
         if isCorrect {
-            correctAnswers += 1
+            presenter.correctAnswers += 1
         }
         
         imageView.layer.borderWidth = 8
@@ -106,46 +112,46 @@ final class MovieQuizViewController: UIViewController {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self = self else { return }
-            self.showNextQuestionOrResults()
+            self.presenter.showNextQuestionOrResults()
             self.imageView.layer.borderWidth = 0
         }
         
     }//ok
     
     //метод показа ответа
-    private func show(quiz step: QuizStepViewModel) {
+    func show(quiz step: QuizStepViewModel) {
         imageView.image = step.image
         textLabel.text = step.question
         counterLabel.text = step.questionNumber
     }
     
     //метод-конструктор показа результатов квиза
-    private func showFinalResults(){
-        statisticService?.store(correct: correctAnswers, count: presenter.currentQuestionIndex, total: presenter.questionsAmount) //сохраняем результат
+    func showFinalResults(){
+        statisticService?.store(correct: presenter.correctAnswers, count: presenter.currentQuestionIndex, total: presenter.questionsAmount) //сохраняем результат
         let alertModel = AlertModel(title: "Этот раунд окончен",
                                     message: resultMessage(),
                                     buttonText: "Сыграть еще раз",
                                     completion: { [weak self] _ in
-                guard let self = self else { return }
+            guard let self = self else { return }
             self.presenter.resetQuestionIndex()
-                self.correctAnswers = 0 // скидываем счётчик правильных ответов
-                self.questionFactory?.requestNextQuestion()
-            })
+            self.presenter.correctAnswers = 0 // скидываем счётчик правильных ответов
+            self.presenter.questionFactory?.requestNextQuestion()
+        })
         alertPresenter?.show(alertModel: alertModel)
         
     }
     
     //метод, который либо показывает следующий ответ, либо результат
-    private func showNextQuestionOrResults() {
-        if presenter.isLastQuestion() {
-            showFinalResults()
-        } else {
-            presenter.switchToNextQuestion()
-            questionFactory?.requestNextQuestion()        }
-    }
+//    private func showNextQuestionOrResults() {
+//        if presenter.isLastQuestion() {
+//            showFinalResults()
+//        } else {
+//            presenter.switchToNextQuestion()
+//            questionFactory?.requestNextQuestion()        }
+//    }
     
     //метод конструирования алерта
-    private func resultMessage() -> String {
+    func resultMessage() -> String {
         guard let statisticService = statisticService else {
             assertionFailure("Ошибка")
             return ""
@@ -154,7 +160,7 @@ final class MovieQuizViewController: UIViewController {
         
         let accurancy = String(format: "%.2f", statisticService.totalAccuracy) //обрубаем число до 2 знаков после запятой
         let totalPlaysString = "Количество сыгранных игр: \(statisticService.gamesCount)"
-        let currentResultString = "Ваш результат: \(correctAnswers) из \(presenter.questionsAmount)"
+        let currentResultString = "Ваш результат: \(presenter.correctAnswers) из \(presenter.questionsAmount)"
         let bestGameString = "Рекорд: \(bestGame.correct) из \(bestGame.total)"
         + "(\(bestGame.date.dateTimeString))"
         let accurancyString = "Средняя точность: \(accurancy)%"
@@ -169,7 +175,7 @@ final class MovieQuizViewController: UIViewController {
 extension MovieQuizViewController: QuestionFactoryDelegate {
     func didLoadDataFromServer() {
         activityIndicator.isHidden = true // скрываем индикатор загрузки
-        questionFactory?.requestNextQuestion()
+        presenter.questionFactory?.requestNextQuestion()
     }
     
     func didFailToLoadData(with error: Error) {
@@ -177,9 +183,7 @@ extension MovieQuizViewController: QuestionFactoryDelegate {
     }
     
     func didReceiveNextQuestion(question: QuizQuestion?) {
-        self.currentQuestion = question
-        let viewModel = presenter.convert(model: question!)
-        self.show(quiz: viewModel)
+        presenter.didRecieveNextQuestion(question: question)
     }
     
 }
