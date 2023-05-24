@@ -2,6 +2,8 @@ import UIKit
 
 final class MovieQuizViewController: UIViewController {
     
+    //MARK: загрузка
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -16,6 +18,7 @@ final class MovieQuizViewController: UIViewController {
         showLoadingIndicator()
         questionFactory?.loadData()
         
+        presenter.viewController = self
     }
     
     
@@ -29,32 +32,23 @@ final class MovieQuizViewController: UIViewController {
     //MARK: КНОПКИ
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
-        let givenAnswer = true
-        sender.isEnabled = false
-        
-        showAnswerResult(isCorrect: givenAnswer == currentQuestion?.correctAnswer)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            sender.isEnabled = true
-        }
+        presenter.currentQuestion = currentQuestion
+        presenter.yesButtonClicked()
     }
     
     @IBAction private func noButtonClicked(_ sender: UIButton) {
-        let givenAnswer = false
-        sender.isEnabled = false
-        
-        showAnswerResult(isCorrect: givenAnswer == currentQuestion?.correctAnswer)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            sender.isEnabled = true
-        }
+        presenter.currentQuestion = currentQuestion
+                presenter.noButtonClicked()
     }
     
     
     //MARK: ПЕРЕМЕННЫЕ И КОНСТАНТЫ
     
     //про вопросы
-    private var currentQuestionIndex: Int = 0
     private var correctAnswers: Int = 0
-    private let questionsCount: Int = 10
+    
+    private let presenter = MovieQuizPresenter()
+
     private var questionFactory: QuestionFactoryProtocol?
     private var currentQuestion: QuizQuestion?
     
@@ -82,33 +76,27 @@ final class MovieQuizViewController: UIViewController {
     private func showNetworkError(message: String) {
         hideLoadingIndicator()
         
-        let model = AlertModel(title: "Ошибка",
-                               message: message,
-                               buttonText: "Попробовать еще раз",
-                               completion: { [weak self] _ in
+        let alert = UIAlertController(
+            title: "Ошибка",
+            message: message,
+            preferredStyle: .alert)
+
+        let action = UIAlertAction(title: "Попробовать еще раз",
+                                   style: .default) { [weak self] _ in
             guard let self = self else { return }
 
-            self.currentQuestionIndex = 0
+            self.presenter.resetQuestionIndex()
             self.correctAnswers = 0
 
             self.questionFactory?.requestNextQuestion()
-            self.questionFactory?.loadData()
-        })
-        
-        alertPresenter?.show(alertModel: model)
+        }
+
+        alert.addAction(action)
     }
     
-    
-    //метод для конвертации данных вопроса
-    private func convert(model: QuizQuestion) -> QuizStepViewModel {
-        return QuizStepViewModel(
-            image: UIImage(data: model.image) ?? UIImage(),
-            question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(questionsCount)")
-    }
     
     //метод для демонстрации, правильный ли был ответ
-    private func showAnswerResult(isCorrect: Bool) {
+    func showAnswerResult(isCorrect: Bool) {
         if isCorrect {
             correctAnswers += 1
         }
@@ -122,7 +110,7 @@ final class MovieQuizViewController: UIViewController {
             self.imageView.layer.borderWidth = 0
         }
         
-    }
+    }//ok
     
     //метод показа ответа
     private func show(quiz step: QuizStepViewModel) {
@@ -133,13 +121,13 @@ final class MovieQuizViewController: UIViewController {
     
     //метод-конструктор показа результатов квиза
     private func showFinalResults(){
-        statisticService?.store(correct: correctAnswers, count: currentQuestionIndex, total: questionsCount) //сохраняем результат
+        statisticService?.store(correct: correctAnswers, count: presenter.currentQuestionIndex, total: presenter.questionsAmount) //сохраняем результат
         let alertModel = AlertModel(title: "Этот раунд окончен",
                                     message: resultMessage(),
                                     buttonText: "Сыграть еще раз",
                                     completion: { [weak self] _ in
                 guard let self = self else { return }
-                self.currentQuestionIndex = 0
+            self.presenter.resetQuestionIndex()
                 self.correctAnswers = 0 // скидываем счётчик правильных ответов
                 self.questionFactory?.requestNextQuestion()
             })
@@ -149,10 +137,10 @@ final class MovieQuizViewController: UIViewController {
     
     //метод, который либо показывает следующий ответ, либо результат
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == questionsCount - 1 {
+        if presenter.isLastQuestion() {
             showFinalResults()
         } else {
-            currentQuestionIndex += 1
+            presenter.switchToNextQuestion()
             questionFactory?.requestNextQuestion()        }
     }
     
@@ -166,7 +154,7 @@ final class MovieQuizViewController: UIViewController {
         
         let accurancy = String(format: "%.2f", statisticService.totalAccuracy) //обрубаем число до 2 знаков после запятой
         let totalPlaysString = "Количество сыгранных игр: \(statisticService.gamesCount)"
-        let currentResultString = "Ваш результат: \(correctAnswers) из \(questionsCount)"
+        let currentResultString = "Ваш результат: \(correctAnswers) из \(presenter.questionsAmount)"
         let bestGameString = "Рекорд: \(bestGame.correct) из \(bestGame.total)"
         + "(\(bestGame.date.dateTimeString))"
         let accurancyString = "Средняя точность: \(accurancy)%"
@@ -190,7 +178,7 @@ extension MovieQuizViewController: QuestionFactoryDelegate {
     
     func didReceiveNextQuestion(question: QuizQuestion?) {
         self.currentQuestion = question
-        let viewModel = self.convert(model: question!)
+        let viewModel = presenter.convert(model: question!)
         self.show(quiz: viewModel)
     }
     

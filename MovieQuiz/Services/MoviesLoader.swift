@@ -9,19 +9,20 @@
 
 import Foundation
 
-// протокол загрузки
 protocol MoviesLoading {
     func loadMovies(handler: @escaping (Result<MostPopularMovies, Error>) -> Void)
 }
 
-// сам загрузчик, который реализует протокол
 struct MoviesLoader: MoviesLoading {
-    // NetworkClient
-    private let networkClient = NetworkClient()
+  // MARK: - NetworkClient
+  private let networkClient: NetworkRouting
+  
+  init(networkClient: NetworkRouting = NetworkClient()) {
+      self.networkClient = networkClient
+  }
     
-    // URL
+    // MARK: - URL
     private var mostPopularMoviesUrl: URL {
-        // Если мы не смогли преобразовать строку в URL, то приложение упадёт с ошибкой
         guard let url = URL(string: "https://imdb-api.com/en/API/MostPopularTVs/k_slz93yb4") else {
             preconditionFailure("Unable to construct mostPopularMoviesUrl")
         }
@@ -44,5 +45,3 @@ struct MoviesLoader: MoviesLoading {
         }
     }
 }
-
-
