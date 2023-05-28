@@ -1,7 +1,7 @@
 import UIKit
 
 final class MovieQuizViewController: UIViewController, MovieQuizViewControllerProtocol {
-
+    
     //MARK: загрузка
     
     override func viewDidLoad() {
@@ -10,6 +10,7 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
         imageView.layer.masksToBounds = true
         imageView.layer.cornerRadius = 20
         presenter = MovieQuizPresenter(viewController: self)
+        alertPresenter = AlertPresenter(viewController: self)
         
     }
     
@@ -41,8 +42,9 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     
     
     //MARK: ПЕРЕМЕННЫЕ И КОНСТАНТЫ
-   
+    
     private var presenter: MovieQuizPresenter!
+    private var alertPresenter: AlertPresenter?
     
     //MARK: МЕТОДЫ
     
@@ -71,19 +73,16 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     func showNetworkError(message: String) {
         hideLoadingIndicator()
         
-        let alert = UIAlertController(
+        let alert = AlertModel(
             title: "Ошибка",
             message: message,
-            preferredStyle: .alert)
+            buttonText: "Попробовать ещё раз") { [weak self] in
+                guard let self = self else { return }
+                
+                self.presenter.restartGame()
+            }
         
-        let action = UIAlertAction(title: "Попробовать ещё раз",
-                                   style: .default) { [weak self] _ in
-            guard let self = self else { return }
-            
-            self.presenter.restartGame()
-        }
-        
-        alert.addAction(action)
+        alertPresenter?.show(model: alert)
     }
     
     //метод показа ответа
@@ -97,19 +96,15 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     func show(quiz result: QuizResultsViewModel) {
         let message = presenter.makeResultsMessage()
         
-        let alert = UIAlertController(
+        let alert = AlertModel(
             title: result.title,
             message: message,
-            preferredStyle: .alert)
+            buttonText: result.buttonText){ [weak self] in
+                guard let self = self else { return }
+                
+                self.presenter.restartGame()
+            }
         
-        let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
-            guard let self = self else { return }
-            
-            self.presenter.restartGame()
-        }
-        
-        alert.addAction(action)
-        
-        self.present(alert, animated: true, completion: nil)
+        alertPresenter?.show(model: alert)
     }
 }
